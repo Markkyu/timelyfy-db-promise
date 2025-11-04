@@ -68,6 +68,7 @@ const JWT_SECRET = process.env.ACCESS_TOKEN_SECRET;
 changePasswordRouter.post("/", async (req, res) => {
   try {
     const { newPassword } = req.body;
+    console.log(newPassword);
 
     if (!newPassword) {
       return res.status(400).json({ message: "New password is required" });

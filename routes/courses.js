@@ -268,11 +268,13 @@ const express = require("express");
 const courseRouter = express.Router();
 const db = require("../config/db");
 
+// ROUTE: /api/courses
+
 // GET Course list with assigned teacher info
 courseRouter.get("/", async (req, res) => {
   try {
     const sql = `
-      SELECT course_id, course_code, course_name, hours_week, course_year, course_college, semester, first_name, last_name, room_name, created_by
+      SELECT course_surrogate_id, course_id, course_code, course_name, hours_week, course_year, course_college, semester, first_name, last_name, room_name, created_by
       FROM courses c
       LEFT JOIN teachers t 
       ON c.assigned_teacher = t.teacher_id
@@ -327,7 +329,7 @@ courseRouter.get("/:department", async (req, res) => {
     const { department } = req.params;
 
     const sql = `
-      SELECT course_id, course_code, course_name, hours_week, course_year, course_college, semester, first_name, last_name, room_name, created_by
+      SELECT course_surrogate_id, course_id, course_code, course_name, hours_week, course_year, course_college, semester, first_name, last_name, room_name, created_by, is_plotted
       FROM courses c
       LEFT JOIN teachers t ON c.assigned_teacher = t.teacher_id
       LEFT JOIN rooms r ON c.assigned_room = r.room_id
@@ -383,6 +385,7 @@ courseRouter.get("/:department/year/:year/sem/:sem", async (req, res) => {
 courseRouter.post("/", async (req, res) => {
   try {
     const {
+      course_id,
       course_code,
       course_name,
       hours_week,
@@ -393,6 +396,7 @@ courseRouter.post("/", async (req, res) => {
       created_by,
     } = req.body;
 
+    console.log(course_id);
     console.log(course_code);
     console.log(course_name);
     console.log(hours_week);
@@ -408,8 +412,9 @@ courseRouter.post("/", async (req, res) => {
     }
 
     const [result] = await db.execute(
-      `INSERT INTO courses (course_code, course_name, hours_week, course_year, course_college, semester, assigned_teacher, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO courses (course_id, course_code, course_name, hours_week, course_year, course_college, semester, assigned_teacher, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
+        course_id,
         course_code,
         course_name,
         hours_week,
@@ -431,27 +436,38 @@ courseRouter.post("/", async (req, res) => {
 });
 
 // Update a course
-courseRouter.put("/:course_id", async (req, res) => {
+courseRouter.put("/:course_surrogate_id", async (req, res) => {
   try {
-    const { course_id } = req.params;
+    const { course_surrogate_id } = req.params;
     const {
+      course_id,
       course_code,
       course_name,
       hours_week,
       course_year,
       course_college,
       semester,
-      assigned_teacher,
+      assigned_teacher = "0",
     } = req.body;
 
+    console.log(course_id);
+    console.log(course_code);
+    console.log(course_name);
+    console.log(hours_week);
+    console.log(course_year);
+    console.log(course_college);
+    console.log(semester);
+    console.log(assigned_teacher);
+
     const [result] = await db.execute(
-      `UPDATE courses SET course_code = ?, course_name = ?, hours_week = ?, assigned_teacher = ? WHERE course_id = ? AND course_year = ? AND semester = ? AND course_college = ?`,
+      `UPDATE courses SET course_id = ?, course_code = ?, course_name = ?, hours_week = ?, assigned_teacher = ? WHERE course_surrogate_id = ? AND course_year = ? AND semester = ? AND course_college = ?`,
       [
+        course_id,
         course_code,
         course_name,
         hours_week,
         assigned_teacher,
-        course_id,
+        course_surrogate_id,
         course_year,
         semester,
         course_college,

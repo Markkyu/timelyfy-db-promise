@@ -9,7 +9,7 @@ const loginLimiter = rateLimit({
 
 const apiLimiter = rateLimit({
   windowMs: 1 * 60 * 1000,
-  max: 3,
+  max: 5,
   message: { message: "Too many refresh requests, try again later" },
 });
 

@@ -32,10 +32,10 @@ const pool = mysql.createPool({
 (async () => {
   try {
     const connection = await pool.getConnection();
-    console.log("✅ Database Connected (mysql2/promise)");
+    console.log("Database Connected");
     connection.release();
   } catch (err) {
-    console.error("❌ Database Connection Failed:", err.message);
+    console.error("Database Connection Failed:", err.message);
   }
 })();
 

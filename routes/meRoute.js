@@ -28,7 +28,7 @@ const pool = require("../config/db"); // mysql2/promise pool
 const meRouter = express.Router();
 const { verifyRole } = require("../middleware/authMiddleware");
 
-meRouter.get("/", verifyRole(["admin"]), async (req, res) => {
+meRouter.get("/", verifyRole(["*"]), async (req, res) => {
   const userId = req.user.id;
 
   try {

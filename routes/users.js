@@ -113,7 +113,7 @@ userRouter.get("/:id", async (req, res) => {
 
   try {
     const [rows] = await pool.query(
-      "SELECT id, username, role, created_at FROM profiles WHERE id = ?",
+      "SELECT id, username, role, created_at, change_password FROM profiles WHERE id = ?",
       [id]
     );
 
@@ -143,7 +143,7 @@ userRouter.put("/:user_id", async (req, res) => {
   }
 });
 
-// REQUEST CHANGE PASSWORD FLAG
+// REQUEST CHANGE PASSWORD FLAG // ANYONE
 userRouter.put("/:user_id/request-change-password", async (req, res) => {
   const { user_id } = req.params;
 
@@ -154,6 +154,22 @@ userRouter.put("/:user_id/request-change-password", async (req, res) => {
     );
 
     res.status(200).json({ message: "Password request successful" });
+  } catch (error) {
+    res.status(500).json({ message: "Error requesting password change" });
+  }
+});
+
+// APPROVE CHANGE PASSWORD FLAG // ADMIN ONLY
+userRouter.put("/:user_id/approve-password-request", async (req, res) => {
+  const { user_id } = req.params;
+
+  try {
+    await pool.query(
+      `UPDATE profiles SET change_password = "approved" WHERE id = ?`,
+      [user_id]
+    );
+
+    res.status(200).json({ message: "Approve successful" });
   } catch (error) {
     res.status(500).json({ message: "Error requesting password change" });
   }

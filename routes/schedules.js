@@ -316,8 +316,8 @@ scheduleRouter.get("/:college/filter", async (req, res) => {
   const { year, sem } = req.query;
 
   const sql = `
-    SELECT ts.slot_course, ts.slot_day, ts.slot_time 
-    FROM teacher_schedules ts 
+    SELECT ts.slot_course, ts.slot_day, ts.slot_time, c.course_name
+    FROM teacher_schedules ts
     INNER JOIN courses c ON ts.slot_course = c.course_id 
     WHERE c.course_college = ? 
       AND c.course_year = ? 
@@ -332,13 +332,16 @@ scheduleRouter.get("/:college/filter", async (req, res) => {
   }
 });
 
+// Run the scheduler
+// scheduleRouter.post("");
+
 // Plot schedules
 scheduleRouter.post("/plot", async (req, res) => {
   const schedules = req.body;
   if (!Array.isArray(schedules) || schedules.length === 0)
     return res
       .status(400)
-      .json({ message: "Schedules must be a non-empty array" });
+      .json({ message: "Newly plotted schedules cannot be empty" });
 
   const conn = await pool.getConnection();
 
@@ -449,7 +452,7 @@ scheduleRouter.put("/", async (req, res) => {
   if (!Array.isArray(schedules) || schedules.length === 0)
     return res
       .status(400)
-      .json({ message: "Schedules must be a non-empty array" });
+      .json({ message: "Newly plotted schedules cannot be empty" });
 
   const sql = `
     UPDATE teacher_schedules
@@ -471,10 +474,18 @@ scheduleRouter.put("/", async (req, res) => {
 // RESET ALL SCHEDULES
 scheduleRouter.delete("/reset-all", async (req, res) => {
   try {
-    await pool.query(`UPDATE teacher_schedules SET slot_course = 0`);
-    const [result] = await pool.query(
-      `UPDATE room_schedules SET slot_course = 0`
+    await pool.query(
+      `UPDATE teacher_schedules SET slot_course = 0 WHERE slot_course NOT IN (0, 2)`
     );
+    await pool.query(
+      `UPDATE room_schedules SET slot_course = 0 WHERE slot_course NOT IN (0, 2)`
+    );
+
+    const [result] = await pool.query(`
+      UPDATE courses
+      SET is_plotted = 0
+    `);
+
     res.status(200).json({
       message: `Schedules reset successfully`,
       affectedRows: result.affectedRows,

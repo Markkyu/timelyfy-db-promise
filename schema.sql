@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Oct 29, 2025 at 07:21 PM
+-- Generation Time: Nov 02, 2025 at 07:30 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.1.25
 
@@ -25,7 +25,7 @@ DELIMITER $$
 --
 -- Procedures
 --
-CREATE PROCEDURE `generateRoomSchedule` (IN `p_room_id` VARCHAR(50), IN `p_room_name` VARCHAR(100))   BEGIN
+CREATE DEFINER=`root`@`localhost` PROCEDURE `generateRoomSchedule` (IN `p_room_id` VARCHAR(50), IN `p_room_name` VARCHAR(100))   BEGIN
     DECLARE id_increment_slot INT DEFAULT 0; -- start from 1 (7:00 AM)
     DECLARE id_increment_day INT DEFAULT 0;  -- 0 = Monday
 
@@ -47,7 +47,7 @@ CREATE PROCEDURE `generateRoomSchedule` (IN `p_room_id` VARCHAR(50), IN `p_room_
     END WHILE;
 END$$
 
-CREATE PROCEDURE `generateTeacherSchedule` (IN `new_teacher_id` INT)   BEGIN
+CREATE DEFINER=`root`@`localhost` PROCEDURE `generateTeacherSchedule` (IN `new_teacher_id` INT)   BEGIN
     DECLARE id_increment_slot INT DEFAULT 0;  -- start at 0 (7:00 AM)
     DECLARE id_increment_day INT DEFAULT 0;   -- 0 = Monday
 
@@ -110,9 +110,7 @@ INSERT INTO `colleges` (`college_id`, `college_name`, `college_major`) VALUES
 (53, 'Secondary Education', 'Major in English'),
 (54, 'Business Administration', 'Major in Financial Management'),
 (55, 'Business Administration', 'Human Resource Development Management'),
-(56, 'Business Administration', 'Marketing Management'),
-(58, 'test', 'test'),
-(59, 'test2', 'test2');
+(56, 'Business Administration', 'Marketing Management');
 
 -- --------------------------------------------------------
 
@@ -130,7 +128,7 @@ CREATE TABLE `courses` (
   `course_college` int(11) NOT NULL,
   `semester` int(11) NOT NULL,
   `assigned_teacher` int(11) DEFAULT NULL,
-  `assigned_room` int(11) NOT NULL,
+  `assigned_room` int(11) DEFAULT NULL,
   `is_plotted` tinyint(1) NOT NULL,
   `created_by` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -140,12 +138,10 @@ CREATE TABLE `courses` (
 --
 
 INSERT INTO `courses` (`course_surrogate_id`, `course_id`, `course_code`, `course_name`, `hours_week`, `course_year`, `course_college`, `semester`, `assigned_teacher`, `assigned_room`, `is_plotted`, `created_by`) VALUES
-(41, 'CS_GEL105', 'GEL 105', 'English Enhancement Course', 3, 1, 1, 1, 36, 6, 0, 1),
-(42, 'CS_GE102', 'GE 102', 'Purposive Communication', 3, 1, 1, 1, 36, 6, 0, 1),
-(43, 'CS_CCS100', 'CCS 100', 'Introduction to Programming', 3, 1, 1, 1, 36, 6, 0, 1),
-(44, 'CS_CCS101', 'CCS 101', 'Computer Programming 1', 3, 1, 1, 1, 36, 6, 0, 1),
-(45, 'CS_GEL1A3', 'GEL 1A3', 'Living in the IT Era', 3, 1, 1, 1, 36, 6, 0, 1),
-(46, 'CS_PED101', 'PED 101', 'Wellness and Fitness', 3, 1, 1, 1, 36, 6, 0, 1);
+(67, 'CS_IC101', 'IC101', 'Introduction to Computing', 3, 1, 1, 1, 36, 6, 0, 1),
+(68, 'CS_EIS102', 'EIS102', 'The Family', 3, 1, 1, 1, NULL, NULL, 0, 1),
+(69, 'CS_GEL105', 'GEL105', 'English Enhancement Course', 3, 1, 1, 1, NULL, NULL, 0, 1),
+(73, 'CS_NSTP101', 'NSTP101', 'Civic Welfare Training Service 1', 3, 1, 1, 1, NULL, NULL, 0, 1);
 
 --
 -- Triggers `courses`
@@ -218,6 +214,18 @@ DELIMITER ;
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `majors`
+--
+
+CREATE TABLE `majors` (
+  `major_id` int(11) NOT NULL,
+  `college_ref` int(11) NOT NULL,
+  `major_name` varchar(60) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `phase_control`
 --
 
@@ -242,15 +250,14 @@ INSERT INTO `phase_control` (`phase_id`, `phase_year`, `phase_sem`, `phase_super
 --
 
 CREATE TABLE `profiles` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `username` varchar(50) NOT NULL,
+  `id` int(11) NOT NULL,
+  `username` text NOT NULL,
   `password` text NOT NULL DEFAULT 'user',
   `role` enum('admin','master_scheduler','super_user','user') NOT NULL DEFAULT 'user',
   `email` varchar(50) NOT NULL,
   `full_name` varchar(50) NOT NULL,
   `created_at` date NOT NULL DEFAULT current_timestamp(),
-  `change_password` enum('no','pending','approved') DEFAULT 'no',
-  PRIMARY KEY (`id`)
+  `change_password` enum('no','pending','approved') DEFAULT 'no'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -258,12 +265,13 @@ CREATE TABLE `profiles` (
 --
 
 INSERT INTO `profiles` (`id`, `username`, `password`, `role`, `email`, `full_name`, `created_at`, `change_password`) VALUES
-(1, 'Markkyu', '$2b$10$T9ASbi5wdDhRCjGYpa6yPesMnU6qf0/.ldb4vjiDcYin96sF4Utrm', 'admin', 'marcbaldozjoel@gmail.com', 'Marc Joel Baldoz', '2025-10-20', 'no'),
+(1, 'Markkyu', '$2b$10$T9ASbi5wdDhRCjGYpa6yPesMnU6qf0/.ldb4vjiDcYin96sF4Utrm', 'admin', 'marcbaldozjoel@gmail.com', 'Marc Joel Baldoz', '2025-10-20', 'approved'),
 (4, 'frenzy', '$2b$10$OVRW.gQr.QtD1cEWDXUjCOICDLCk9oq7Qf5egjEV64nr6xDjTmoi.', 'super_user', '', '', '2025-10-18', 'no'),
 (5, 'vernie', '$2b$10$UoiheGdo88pDsM.jI41.mOXRaVwk8CEXoPk5LcXQtrjVm77xPaMs6', 'master_scheduler', '', '', '2025-10-18', 'no'),
-(6, 'admin', '$2b$10$TTIgNemUoQtSon1OOtRs4OfFlBlq3HpuTUtrB8CqecQtdJUBlZYxi', 'admin', '', '', '2025-10-18', 'no'),
+(6, 'admin', '$2b$10$TTIgNemUoQtSon1OOtRs4OfFlBlq3HpuTUtrB8CqecQtdJUBlZYxi', 'admin', '', '', '2025-10-18', 'pending'),
 (11, 'master', '$2b$10$Gkur1F5DsOW1ntmw4RdOAetMcpajTfqywejILZJ0kcstlIQUjbqu2', 'master_scheduler', '', '', '2025-10-20', 'no'),
-(15, 'user', '$2b$10$0V4J/amrKrsCDChYNy.m.O5.QNYdGKPRW8gdoBc0niF2dCFjoiy/m', 'user', '', '', '2025-10-22', 'no');
+(15, 'user', '$2b$10$0V4J/amrKrsCDChYNy.m.O5.QNYdGKPRW8gdoBc0niF2dCFjoiy/m', 'user', '', '', '2025-10-22', 'no'),
+(22, 'annpar', '$2b$10$jU7T1iTYNt6Q5QdKYgfj2OPFL8LFBGYdZ/kRMmH7bYRy/EMrTZ/nW', 'user', '', '', '2025-11-02', 'no');
 
 -- --------------------------------------------------------
 
@@ -473,8 +481,8 @@ CREATE TABLE `schedules` (
 
 CREATE TABLE `teachers` (
   `teacher_id` int(11) NOT NULL,
-  `first_name` varchar(50) NOT NULL,
-  `last_name` varchar(50) NOT NULL,
+  `first_name` text NOT NULL,
+  `last_name` text NOT NULL,
   `department` int(11) DEFAULT NULL,
   `teacher_availability` enum('full','custom') NOT NULL DEFAULT 'full'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -512,9 +520,16 @@ DELIMITER ;
 
 CREATE TABLE `teacher_assigned_room` (
   `teacher_room_id` int(11) NOT NULL,
-  `teacher_id` int(11) NOT NULL,
-  `room_id` int(11) NOT NULL
+  `teacher_id` int(11) DEFAULT NULL,
+  `room_id` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `teacher_assigned_room`
+--
+
+INSERT INTO `teacher_assigned_room` (`teacher_room_id`, `teacher_id`, `room_id`) VALUES
+(1, 36, 6);
 
 -- --------------------------------------------------------
 
@@ -825,7 +840,8 @@ INSERT INTO `user_programs` (`user_id`, `program_id`) VALUES
 (15, 1),
 (15, 2),
 (15, 8),
-(15, 48);
+(22, 9),
+(22, 51);
 
 --
 -- Indexes for dumped tables
@@ -835,7 +851,8 @@ INSERT INTO `user_programs` (`user_id`, `program_id`) VALUES
 -- Indexes for table `colleges`
 --
 ALTER TABLE `colleges`
-  ADD PRIMARY KEY (`college_id`);
+  ADD PRIMARY KEY (`college_id`),
+  ADD UNIQUE KEY `UC_College` (`college_name`,`college_major`) USING HASH;
 
 --
 -- Indexes for table `courses`
@@ -844,6 +861,12 @@ ALTER TABLE `courses`
   ADD PRIMARY KEY (`course_surrogate_id`),
   ADD KEY `assigned_teacher` (`assigned_teacher`),
   ADD KEY `fk_course_creator` (`created_by`);
+
+--
+-- Indexes for table `majors`
+--
+ALTER TABLE `majors`
+  ADD PRIMARY KEY (`major_id`);
 
 --
 -- Indexes for table `phase_control`
@@ -890,7 +913,9 @@ ALTER TABLE `teachers`
 -- Indexes for table `teacher_assigned_room`
 --
 ALTER TABLE `teacher_assigned_room`
-  ADD PRIMARY KEY (`teacher_room_id`);
+  ADD PRIMARY KEY (`teacher_room_id`),
+  ADD KEY `teacher_id` (`teacher_id`),
+  ADD KEY `room_id` (`room_id`);
 
 --
 -- Indexes for table `teacher_schedules`
@@ -914,13 +939,19 @@ ALTER TABLE `user_programs`
 -- AUTO_INCREMENT for table `colleges`
 --
 ALTER TABLE `colleges`
-  MODIFY `college_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=60;
+  MODIFY `college_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=62;
 
 --
 -- AUTO_INCREMENT for table `courses`
 --
 ALTER TABLE `courses`
-  MODIFY `course_surrogate_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=61;
+  MODIFY `course_surrogate_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=87;
+
+--
+-- AUTO_INCREMENT for table `majors`
+--
+ALTER TABLE `majors`
+  MODIFY `major_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `phase_control`
@@ -932,7 +963,7 @@ ALTER TABLE `phase_control`
 -- AUTO_INCREMENT for table `profiles`
 --
 ALTER TABLE `profiles`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=23;
 
 --
 -- AUTO_INCREMENT for table `rooms`
@@ -956,19 +987,19 @@ ALTER TABLE `schedules`
 -- AUTO_INCREMENT for table `teachers`
 --
 ALTER TABLE `teachers`
-  MODIFY `teacher_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=38;
+  MODIFY `teacher_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=39;
 
 --
 -- AUTO_INCREMENT for table `teacher_assigned_room`
 --
 ALTER TABLE `teacher_assigned_room`
-  MODIFY `teacher_room_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `teacher_room_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `teacher_schedules`
 --
 ALTER TABLE `teacher_schedules`
-  MODIFY `teacher_schedule_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=546;
+  MODIFY `teacher_schedule_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=681;
 
 --
 -- Constraints for dumped tables
@@ -994,6 +1025,13 @@ ALTER TABLE `schedules`
   ADD CONSTRAINT `schedules_ibfk_1` FOREIGN KEY (`course_id`) REFERENCES `courses` (`course_surrogate_id`),
   ADD CONSTRAINT `schedules_ibfk_2` FOREIGN KEY (`teacher_id`) REFERENCES `teachers` (`teacher_id`),
   ADD CONSTRAINT `schedules_ibfk_3` FOREIGN KEY (`college_id`) REFERENCES `colleges` (`college_id`);
+
+--
+-- Constraints for table `teacher_assigned_room`
+--
+ALTER TABLE `teacher_assigned_room`
+  ADD CONSTRAINT `teacher_assigned_room_ibfk_1` FOREIGN KEY (`teacher_id`) REFERENCES `teachers` (`teacher_id`),
+  ADD CONSTRAINT `teacher_assigned_room_ibfk_2` FOREIGN KEY (`room_id`) REFERENCES `rooms` (`room_id`);
 
 --
 -- Constraints for table `teacher_schedules`
