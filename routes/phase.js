@@ -1,59 +1,7 @@
-// const express = require("express");
-// const phaseRouter = express.Router();
-// const connection = require("../config/db");
-
-// // How phase control works
-// // GETS phase control
-
-// // Phases and Stages
-// // Phase 1 Stage 1 - Master Scheduler, Year 1, Sem 1
-
-// // Phase only edits 1 row because of phase control
-
-// // route: /api/phase
-
-// phaseRouter.get("/", (req, res) => {
-//   connection.query(
-//     `SELECT * FROM phase_control WHERE phase_id = 1`,
-//     (err, rows) => {
-//       if (err)
-//         return res
-//           .status(500)
-//           .json({ message: `An error has occurred: ${err.sqlMessage}` });
-
-//       res.status(200).json(rows);
-//     }
-//   );
-// });
-
-// phaseRouter.put("/:phase_id", (req, res) => {
-//   const { phase_id } = req.params;
-//   const { phase_year, phase_sem, phase_supervisor } = req.body;
-
-//   connection.query(
-//     `UPDATE phase_control SET phase_year = ?, phase_sem = ?, phase_supervisor = ? WHERE phase_id = ?`,
-//     [phase_year, phase_sem, phase_supervisor, phase_id],
-//     (err, result) => {
-//       if (err)
-//         return res
-//           .status(500)
-//           .json({ message: `An error has occurred: ${err.sqlMessage}` });
-
-//       if (result.affectedRows === 0)
-//         return res.status(404).json({ message: `Phase_id cannot be found` });
-
-//       res.status(200).json({
-//         message: `Phase Updated to ${phase_supervisor} yr: ${phase_year} sem: ${phase_sem}`,
-//       });
-//     }
-//   );
-// });
-
-// module.exports = phaseRouter;
-
 const express = require("express");
 const phaseRouter = express.Router();
 const pool = require("../config/db"); // mysql2/promise pool
+const { verifyRole } = require("../middleware/authMiddleware");
 
 // GET Phase Control (always phase_id = 1)
 phaseRouter.get("/", async (req, res) => {
@@ -70,28 +18,32 @@ phaseRouter.get("/", async (req, res) => {
 });
 
 // UPDATE Phase Control
-phaseRouter.put("/:phase_id", async (req, res) => {
-  const { phase_id } = req.params;
-  const { phase_year, phase_sem, phase_supervisor } = req.body;
+phaseRouter.put(
+  "/:phase_id",
+  verifyRole(["admin", "master_scheduler"]),
+  async (req, res) => {
+    const { phase_id } = req.params;
+    const { phase_year, phase_sem, phase_supervisor } = req.body;
 
-  try {
-    const [result] = await pool.query(
-      `UPDATE phase_control 
+    try {
+      const [result] = await pool.query(
+        `UPDATE phase_control 
        SET phase_year = ?, phase_sem = ?, phase_supervisor = ? 
        WHERE phase_id = ?`,
-      [phase_year, phase_sem, phase_supervisor, phase_id]
-    );
+        [phase_year, phase_sem, phase_supervisor, phase_id]
+      );
 
-    if (result.affectedRows === 0)
-      return res.status(404).json({ message: "Phase_id not found" });
+      if (result.affectedRows === 0)
+        return res.status(404).json({ message: "Phase_id not found" });
 
-    return res.status(200).json({
-      message: `Phase Updated → Supervisor: ${phase_supervisor}, Year: ${phase_year}, Sem: ${phase_sem}`,
-    });
-  } catch (err) {
-    console.error("Error updating phase:", err);
-    return res.status(500).json({ message: "Database error" });
+      return res.status(200).json({
+        message: `Phase Updated → Supervisor: ${phase_supervisor}, Year: ${phase_year}, Sem: ${phase_sem}`,
+      });
+    } catch (err) {
+      console.error("Error updating phase:", err);
+      return res.status(500).json({ message: "Database error" });
+    }
   }
-});
+);
 
 module.exports = phaseRouter;

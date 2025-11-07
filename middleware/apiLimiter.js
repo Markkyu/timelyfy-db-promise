@@ -9,8 +9,14 @@ const loginLimiter = rateLimit({
 
 const apiLimiter = rateLimit({
   windowMs: 1 * 60 * 1000,
-  max: 5,
+  max: 100,
   message: { message: "Too many refresh requests, try again later" },
 });
 
-module.exports = { loginLimiter, apiLimiter };
+const schedulerLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000,
+  max: 5,
+  message: { message: "Too many scheduler call, try again after a minute" },
+});
+
+module.exports = { loginLimiter, apiLimiter, schedulerLimiter };

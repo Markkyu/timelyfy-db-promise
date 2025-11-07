@@ -1,28 +1,3 @@
-// const express = require("express");
-// const connection = require("../config/db");
-// const meRouter = express.Router();
-// const { verifyRole } = require("../middleware/authMiddleware");
-
-// meRouter.get("/", verifyRole(["admin"]), (req, res) => {
-//   const userId = req.user.id;
-
-//   connection.query(
-//     `SELECT id, username, role, email, full_name, change_password FROM profiles WHERE id = ?`,
-//     [userId],
-//     (err, results) => {
-//       if (err) return res.status(500).json({ message: "DB Error" });
-
-//       if (results.length === 0)
-//         return res.status(404).json({ message: "User not found" });
-
-//       const user = results[0];
-//       res.json({ user });
-//     }
-//   );
-// });
-
-// module.exports = meRouter;
-
 const express = require("express");
 const pool = require("../config/db"); // mysql2/promise pool
 const meRouter = express.Router();
