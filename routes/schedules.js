@@ -261,6 +261,25 @@ scheduleRouter.post("/unplot", async (req, res) => {
   }
 });
 
+scheduleRouter.get("/merge/:id", async (req, res) => {});
+
+scheduleRouter.get("/merge-courses", async (req, res) => {
+  const sql = `
+    SELECT CONCAT(m.merge_college,c.course_year) as merge_college, m.course_origin
+    FROM merge_courses m
+    INNER JOIN courses c
+    ON m.course_origin = c.course_id
+  `;
+
+  try {
+    const [rows] = await pool.query(sql);
+
+    res.status(200).json(rows);
+  } catch (err) {
+    res.status(500).json({ message: `Error: ${err.message}` });
+  }
+});
+
 scheduleRouter.put("/execute-scheduler", schedulerLimiter, async (req, res) => {
   const newSchedules = req.body;
 

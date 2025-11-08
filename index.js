@@ -63,7 +63,7 @@ app.use(
   teacherDepartmentRouter
 );
 
-app.use("/api/schedules", verifyRole(["*"]), loggerFunction, scheduleRouter); // everyone
+app.use("/api/schedules", loggerFunction, scheduleRouter); // everyone
 
 app.use("/api/phase", loggerFunction, phaseRouter); // Master Scheduler and Admin only edit
 

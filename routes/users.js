@@ -1,6 +1,7 @@
 const express = require("express");
 const userRouter = express.Router();
 const pool = require("../config/db");
+const { verifyRole } = require("../middleware/authMiddleware");
 
 // ROUTE: /api/users
 
@@ -85,7 +86,7 @@ userRouter.put("/:user_id/approve-password-request", async (req, res) => {
 });
 
 // DELETE USER
-userRouter.delete("/:user_id", async (req, res) => {
+userRouter.delete("/:user_id", verifyRole(["admin"]), async (req, res) => {
   const { user_id } = req.params;
 
   try {

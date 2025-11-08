@@ -101,20 +101,20 @@ courseRouter.get("/:department/filter", async (req, res) => {
 });
 
 // Get courses by department, year, sem
-courseRouter.get("/:department/year/:year/sem/:sem", async (req, res) => {
-  try {
-    const { department, year, sem } = req.params;
+// courseRouter.get("/:department/year/:year/sem/:sem", async (req, res) => {
+//   try {
+//     const { department, year, sem } = req.params;
 
-    const [rows] = await db.execute(
-      "SELECT * FROM courses LEFT JOIN teachers ON courses.assigned_teacher = teachers.teacher_id WHERE course_college = ? AND course_year = ? AND semester = ?",
-      [department, year, sem]
-    );
+//     const [rows] = await db.execute(
+//       "SELECT * FROM courses LEFT JOIN teachers ON courses.assigned_teacher = teachers.teacher_id WHERE course_college = ? AND course_year = ? AND semester = ?",
+//       [department, year, sem]
+//     );
 
-    return res.status(200).json(rows);
-  } catch (err) {
-    return res.status(500).json({ message: `Error: ${err.message}` });
-  }
-});
+//     return res.status(200).json(rows);
+//   } catch (err) {
+//     return res.status(500).json({ message: `Error: ${err.message}` });
+//   }
+// });
 
 // Add a course
 courseRouter.post("/", async (req, res) => {
@@ -227,6 +227,65 @@ courseRouter.delete("/:course_id", async (req, res) => {
     return res
       .status(200)
       .json({ message: `Course deleted successfully`, id: course_id });
+  } catch (err) {
+    return res.status(500).json({ message: `Error: ${err.message}` });
+  }
+});
+
+courseRouter.get("/merged/:course_id", async (req, res) => {
+  try {
+    const { course_id } = req.params;
+
+    // SELECT course_surrogate_id, course_id, course_code, course_name, hours_week, course_year, course_college, semester, first_name, last_name, room_name, created_by, is_plotted
+    const sql = `
+      SELECT *
+      FROM merge_courses
+      WHERE course_origin = ?
+    `;
+
+    const [rows] = await db.execute(sql, [course_id]);
+    return res.status(200).json(rows);
+  } catch (err) {
+    return res.status(500).json({ message: `Error: ${err.message}` });
+  }
+});
+
+courseRouter.delete("/merge/:course_id", async (req, res) => {
+  const { course_id } = req.params;
+  console.log(course_id);
+  try {
+    const [result] = await db.execute(
+      "DELETE FROM merge_courses WHERE course_origin = ?",
+      [course_id]
+    );
+
+    if (result.affectedRows === 0)
+      return res.status(404).json({ message: "Course not found" });
+
+    return res.status(200).json({ message: "College Cleared" });
+  } catch (err) {
+    return res.status(500).json({ message: `Error: ${err.message}` });
+  }
+});
+
+courseRouter.post("/merge", async (req, res) => {
+  const merge = req.body;
+
+  if (!Array.isArray(merge) || merge.length === 0)
+    return res.status(400).json({ message: "Merge schedules cannot be empty" });
+
+  const sql = `
+    INSERT IGNORE INTO merge_courses (merge_college, course_origin)
+    VALUES (?, ?)
+  `;
+
+  try {
+    for (const item of merge) {
+      const { merge_college, course_origin } = item;
+      await db.execute(sql, [merge_college, course_origin]);
+    }
+
+    return res.status(201).json({ message: "Course merged with colleges" });
   } catch (err) {
     return res.status(500).json({ message: `Error: ${err.message}` });
   }

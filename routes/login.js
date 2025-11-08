@@ -38,7 +38,7 @@ loginRouter.post("/", async (req, res) => {
         role: user.role,
       },
       JWT_SECRET,
-      { expiresIn: "1d" }
+      { expiresIn: "16h" }
     );
 
     // Remove password from result
