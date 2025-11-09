@@ -68,8 +68,8 @@ scheduleRouter.get("/college/:classId", async (req, res) => {
   try {
     const [rows] = await pool.query(sql, [classId]);
 
-    if (rows.length === 0)
-      return res.status(404).json({ message: "No schedules for this class" });
+    // if (rows.length === 0)
+    //   return res.status(404).json({ message: "No schedules for this class" });
 
     res.status(200).json(rows);
   } catch (error) {
