@@ -63,12 +63,40 @@ courseRouter.get("/:department", async (req, res) => {
     const { department } = req.params;
 
     // SELECT course_surrogate_id, course_id, course_code, course_name, hours_week, course_year, course_college, semester, first_name, last_name, room_name, created_by, is_plotted
-    const sql = `
+    // SELECT *, GROUP_CONCAT(DISTINCT m.merge_college ORDER BY m.merge_college SEPARATOR ', ') AS merge_colleges FROM courses c LEFT JOIN teachers t ON c.assigned_teacher = t.teacher_id LEFT JOIN rooms r ON c.assigned_room = r.room_id LEFT JOIN merge_courses m ON m.course_origin = c.course_id GROUP BY c.course_id, c.course_code
+
+    // gets unique course, prevents duped courses
+    const newSQL = `
+      SELECT course_surrogate_id, course_id, course_code, 
+      course_name, hours_week, course_year, course_college, 
+      semester, is_plotted, is_special, created_by, first_name, 
+      last_name, room_name, 
+      GROUP_CONCAT(DISTINCT m.merge_college ORDER BY m.merge_college SEPARATOR ', ') AS merge_colleges 
+      FROM courses c 
+      LEFT JOIN teachers t ON c.assigned_teacher = t.teacher_id 
+      LEFT JOIN rooms r ON c.assigned_room = r.room_id 
+      LEFT JOIN merge_courses m ON m.course_origin = c.course_id 
+      WHERE course_college = ?
+      GROUP BY c.course_id, c.course_code
+    `;
+
+    const originalSQL = `
       SELECT *
       FROM courses c
       LEFT JOIN teachers t ON c.assigned_teacher = t.teacher_id
       LEFT JOIN rooms r ON c.assigned_room = r.room_id
       WHERE course_college = ?
+    `;
+
+    // gets unique course, prevents duped courses
+    const sql = `
+      SELECT course_surrogate_id, course_id, course_code, course_name, hours_week, course_year, course_college, semester, is_plotted, is_special, created_by, first_name, last_name, room_name, GROUP_CONCAT(DISTINCT m.merge_college ORDER BY m.merge_college SEPARATOR ', ') AS merge_colleges 
+      FROM courses c 
+      LEFT JOIN teachers t ON c.assigned_teacher = t.teacher_id 
+      LEFT JOIN rooms r ON c.assigned_room = r.room_id 
+      LEFT JOIN merge_courses m ON m.course_origin = c.course_id 
+      WHERE c.course_college = ?
+      GROUP BY c.course_id, c.course_code
     `;
 
     const [rows] = await db.execute(sql, [department]);
@@ -84,13 +112,24 @@ courseRouter.get("/:department/filter", async (req, res) => {
     const { department } = req.params;
     const { year, sem } = req.query;
 
-    const sql = `
+    const originalSQL = `
       SELECT c.course_id, c.course_code, c.course_name, c.hours_week, c.is_plotted, c.created_by, 
-             c.assigned_teacher, c.assigned_room, t.first_name, t.last_name, r.room_name 
+      c.assigned_teacher, c.assigned_room, t.first_name, t.last_name, r.room_name 
       FROM courses c 
       LEFT JOIN teachers t ON c.assigned_teacher = t.teacher_id 
       LEFT JOIN rooms r ON c.assigned_room = r.room_id 
       WHERE c.course_college = ? AND c.course_year = ? AND c.semester = ?
+    `;
+
+    const sql = `
+      SELECT c.course_id, c.course_code, c.course_name, c.hours_week, c.is_plotted, c.created_by, 
+      c.assigned_teacher, c.assigned_room, t.first_name, t.last_name, r.room_name, GROUP_CONCAT(DISTINCT m.merge_college ORDER BY m.merge_college SEPARATOR ', ') AS merge_colleges 
+      FROM courses c 
+      LEFT JOIN teachers t ON c.assigned_teacher = t.teacher_id 
+      LEFT JOIN rooms r ON c.assigned_room = r.room_id 
+      LEFT JOIN merge_courses m ON m.course_origin = c.course_id
+      WHERE c.course_college = ? AND c.course_year = ? AND c.semester = ?
+      GROUP BY c.course_id, c.course_code
     `;
 
     const [rows] = await db.execute(sql, [department, year, sem]);
@@ -252,7 +291,7 @@ courseRouter.get("/merged/:course_id", async (req, res) => {
 
 courseRouter.delete("/merge/:course_id", async (req, res) => {
   const { course_id } = req.params;
-  console.log(course_id);
+  // console.log(course_id);
   try {
     const [result] = await db.execute(
       "DELETE FROM merge_courses WHERE course_origin = ?",

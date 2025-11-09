@@ -68,8 +68,8 @@ scheduleRouter.get("/college/:classId", async (req, res) => {
   try {
     const [rows] = await pool.query(sql, [classId]);
 
-    // if (rows.length === 0)
-    //   return res.status(404).json({ message: "No schedules for this class" });
+    if (rows.length === 0)
+      return res.status(404).json({ message: "No schedules for this class" });
 
     res.status(200).json(rows);
   } catch (error) {
@@ -109,11 +109,11 @@ scheduleRouter.get("/room/:room_id", async (req, res) => {
   const sql = `
     SELECT * 
     FROM room_schedules rs
-    INNER JOIN rooms r
+    LEFT JOIN rooms r
     ON r.room_id = rs.room_id
-    INNER JOIN courses c
+    LEFT JOIN courses c
     ON c.course_id = rs.slot_course
-    INNER JOIN teachers t
+    LEFT JOIN teachers t
     ON c.assigned_teacher = t.teacher_id
     WHERE rs.slot_course NOT IN ("0","2")
     AND rs.room_id = ?
@@ -131,72 +131,83 @@ scheduleRouter.get("/room/:room_id", async (req, res) => {
 scheduleRouter.post("/plot", async (req, res) => {
   const schedules = req.body;
 
-  // console.log(schedules);
-
-  if (!Array.isArray(schedules) || schedules.length === 0)
+  if (!Array.isArray(schedules) || schedules.length === 0) {
     return res
       .status(400)
       .json({ message: "Newly plotted schedules cannot be empty" });
+  }
 
   const conn = await pool.getConnection();
 
   try {
     await conn.beginTransaction();
 
+    const classSchedules = [];
+    const teacherSchedules = [];
+    const roomSchedules = [];
+
+    for (const s of schedules) {
+      classSchedules.push([s.slot_course, s.class_id, s.slot_day, s.slot_time]);
+      if (s.teacher_id) {
+        teacherSchedules.push([
+          s.slot_course,
+          s.teacher_id,
+          s.slot_day,
+          s.slot_time,
+        ]);
+      }
+      if (s.room_id) {
+        roomSchedules.push([s.slot_course, s.room_id, s.slot_day, s.slot_time]);
+      }
+    }
+
+    console.log(teacherSchedules);
+    console.log(roomSchedules);
+
     const classSQL = `
       UPDATE class_schedules
       SET slot_course = ?
       WHERE class_id = ? AND slot_day = ? AND slot_time = ?
     `;
+    if (classSchedules.length > 0) {
+      await Promise.all(
+        classSchedules.map((values) => conn.query(classSQL, values))
+      );
+    }
 
+    // --- Batch Update: teacher_schedules ---
     const teacherSQL = `
       UPDATE teacher_schedules
       SET slot_course = ?
       WHERE teacher_id = ? AND slot_day = ? AND slot_time = ?
     `;
+    if (teacherSchedules.length > 0) {
+      await Promise.all(
+        teacherSchedules.map((values) => conn.query(teacherSQL, values))
+      );
+    }
 
+    // --- Batch Update: room_schedules ---
     const roomSQL = `
       UPDATE room_schedules
       SET slot_course = ?
       WHERE room_id = ? AND slot_day = ? AND slot_time = ?
     `;
-
-    // Update class schedules
-    for (const s of schedules) {
-      await conn.query(classSQL, [
-        s.slot_course,
-        s.class_id,
-        s.slot_day,
-        s.slot_time,
-      ]);
+    if (roomSchedules.length > 0) {
+      await Promise.all(
+        roomSchedules.map((values) => conn.query(roomSQL, values))
+      );
     }
 
-    // Update teacher schedules
-    for (const s of schedules) {
-      await conn.query(teacherSQL, [
-        s.slot_course,
-        s.teacher_id,
-        s.slot_day,
-        s.slot_time,
-      ]);
-    }
-
-    // Update room schedules
-    for (const s of schedules) {
-      await conn.query(roomSQL, [
-        s.slot_course,
-        s.room_id,
-        s.slot_day,
-        s.slot_time,
-      ]);
-    }
-
-    // Update courses
+    // --- Update courses once ---
     const uniqueCourses = [...new Set(schedules.map((s) => s.slot_course))];
-    for (const courseId of uniqueCourses) {
-      await conn.query(
-        `UPDATE courses SET is_plotted = 1 WHERE course_id = ?`,
-        [courseId]
+    if (uniqueCourses.length > 0) {
+      await Promise.all(
+        uniqueCourses.map((courseId) =>
+          conn.query(`UPDATE courses SET is_plotted = 1 WHERE course_id = ?`, [
+            courseId,
+          ])
+        )
       );
     }
 
@@ -208,6 +219,7 @@ scheduleRouter.post("/plot", async (req, res) => {
     });
   } catch (err) {
     await conn.rollback();
+    console.error("Plot failed:", err);
     res
       .status(500)
       .json({ message: "Failed to plot schedules", error: err.message });
@@ -215,6 +227,94 @@ scheduleRouter.post("/plot", async (req, res) => {
     conn.release();
   }
 });
+
+// scheduleRouter.post("/plot", async (req, res) => {
+//   const schedules = req.body;
+
+//   console.log(schedules);
+
+//   if (!Array.isArray(schedules) || schedules.length === 0)
+//     return res
+//       .status(400)
+//       .json({ message: "Newly plotted schedules cannot be empty" });
+
+//   const conn = await pool.getConnection();
+
+//   try {
+//     await conn.beginTransaction();
+
+//     const classSQL = `
+//       UPDATE class_schedules
+//       SET slot_course = ?
+//       WHERE class_id = ? AND slot_day = ? AND slot_time = ?
+//     `;
+
+//     const teacherSQL = `
+//       UPDATE teacher_schedules
+//       SET slot_course = ?
+//       WHERE teacher_id = ? AND slot_day = ? AND slot_time = ?
+//     `;
+
+//     const roomSQL = `
+//       UPDATE room_schedules
+//       SET slot_course = ?
+//       WHERE room_id = ? AND slot_day = ? AND slot_time = ?
+//     `;
+
+//     // Update class schedules
+//     for (const s of schedules) {
+//       await conn.query(classSQL, [
+//         s.slot_course,
+//         s.class_id,
+//         s.slot_day,
+//         s.slot_time,
+//       ]);
+//     }
+
+//     // Update teacher schedules
+//     for (const s of schedules) {
+//       await conn.query(teacherSQL, [
+//         s.slot_course,
+//         s.teacher_id,
+//         s.slot_day,
+//         s.slot_time,
+//       ]);
+//     }
+
+//     // Update room schedules
+//     for (const s of schedules) {
+//       await conn.query(roomSQL, [
+//         s.slot_course,
+//         s.room_id,
+//         s.slot_day,
+//         s.slot_time,
+//       ]);
+//     }
+
+//     // Update courses
+//     const uniqueCourses = [...new Set(schedules.map((s) => s.slot_course))];
+//     for (const courseId of uniqueCourses) {
+//       await conn.query(
+//         `UPDATE courses SET is_plotted = 1 WHERE course_id = ?`,
+//         [courseId]
+//       );
+//     }
+
+//     await conn.commit();
+
+//     res.status(201).json({
+//       message: "Schedules plotted successfully",
+//       plottedCourses: uniqueCourses,
+//     });
+//   } catch (err) {
+//     await conn.rollback();
+//     res
+//       .status(500)
+//       .json({ message: "Failed to plot schedules", error: err.message });
+//   } finally {
+//     conn.release();
+//   }
+// });
 
 // Unplot schedules
 scheduleRouter.post("/unplot", async (req, res) => {
